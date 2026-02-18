@@ -15,7 +15,7 @@
         .font-space { font-family: 'Space Grotesk', sans-serif; }
         
         /* --- 3D FLIP CARD --- */
-        .card-container { perspective: 2000px; height: 100%; min-height: 700px; }
+        .card-container { perspective: 2000px; height: 100%; min-height: 680px; }
         .card-inner {
             position: relative; width: 100%; height: 100%;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -27,10 +27,10 @@
             backface-visibility: hidden; border-radius: 1.5rem;
             display: flex; flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
         .is-flipped .card-front { visibility: hidden !important; pointer-events: none; }
-        .card-back { transform: rotateY(180deg); background: #f1f5f9; border: 4px solid white; }
+        .card-back { transform: rotateY(180deg); background: #f8fafc; border: 4px solid white; }
 
         /* --- ABACUS STYLES --- */
         .bead { transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28); cursor: pointer; }
@@ -142,7 +142,7 @@ function initZones(count) {
         target: 0,
         flipped: false,
         range: 1000,
-        mode: 'random', // Entraînement par défaut
+        mode: 'random', // "Entraînement"
         type: 'arabic',
         timeLeft: 30,
         opts: { arabic: true, roman: true, letters: true, add: true, mul: false }
@@ -231,19 +231,19 @@ function render() {
         <div class="card-container ${z.flipped ? 'is-flipped' : ''}">
             <div class="card-inner">
                 <div class="card-front bg-white border-4 border-slate-300">
-                    <!-- Config (Ordre exact : Entraînement, Défi, Sprint) -->
+                    <!-- Config (ORDRE EXACT : Entraînement, Duel, Sprint) -->
                     <div class="p-3 bg-slate-50 border-b flex flex-col gap-2">
                         <div class="flex justify-between items-center">
-                            <div class="flex bg-slate-200 p-0.5 rounded-lg gap-0.5">
+                            <div class="flex bg-slate-200 p-0.5 rounded-lg gap-0.5 shadow-inner">
                                 ${['random','manual','dictation'].map(m => `
-                                    <button onclick="zones[${idx}].mode='${m}'; render();" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${z.mode === m ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500'}">
-                                        ${m === 'random' ? 'Entraînement' : m === 'manual' ? 'Défi' : 'Sprint'}
+                                    <button onclick="zones[${idx}].mode='${m}'; render();" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${z.mode === m ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}">
+                                        ${m === 'random' ? 'Entraînement' : m === 'manual' ? 'Duel' : 'Sprint'}
                                     </button>
                                 `).join('')}
                             </div>
                             <div class="flex gap-0.5">
                                 ${[1000, 10000, 1000000, 1000000000].map(r => `
-                                    <button onclick="zones[${idx}].range=${r}; render();" class="w-9 h-7 flex items-center justify-center rounded-md text-[8px] font-black border transition-all ${z.range === r ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-400 border-slate-200'}">
+                                    <button onclick="zones[${idx}].range=${r}; render();" class="w-8 h-7 flex items-center justify-center rounded-md text-[8px] font-black border transition-all ${z.range === r ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'}">
                                         ${r < 10000 ? r : r === 10000 ? '10k' : (r/1000000)+'M'}
                                     </button>
                                 `).join('')}
@@ -252,12 +252,12 @@ function render() {
                         <div class="flex items-center gap-2 bg-white p-1 rounded-lg border-2 border-slate-100">
                             <div class="flex-1 flex gap-1 overflow-x-auto scrollbar-hide px-1">
                                 ${Object.entries(z.opts).map(([k,v]) => `
-                                    <button onclick="zones[${idx}].opts.${k}=${!v}; render();" class="px-2 py-1 rounded-full text-[9px] font-black uppercase border transition-all ${v ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-300'}">
+                                    <button onclick="zones[${idx}].opts.${k}=${!v}; render();" class="px-2 py-1 rounded-full text-[8px] font-black uppercase border transition-all ${v ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-300'}">
                                         ${OPTION_LABELS[k]}
                                     </button>
                                 `).join('')}
                             </div>
-                            <button onclick="generateChallenge(${idx})" class="h-8 px-4 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase border-b-2 border-indigo-800 shadow-md active:translate-y-1 active:border-b-0">Lancer</button>
+                            <button onclick="generateChallenge(${idx})" class="h-8 px-4 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase border-b-2 border-indigo-800 shadow-md active:translate-y-1">Lancer</button>
                         </div>
                     </div>
 
@@ -273,7 +273,7 @@ function render() {
 
                     <!-- Boulier -->
                     <div class="flex-1 px-4 flex items-center justify-center">
-                        <div class="w-full h-full max-h-[360px] bg-[#2d1e12] rounded-[2rem] border-8 border-[#1a120b] shadow-2xl flex p-1.5 overflow-hidden">
+                        <div class="w-full h-full max-h-[350px] bg-[#2d1e12] rounded-[2rem] border-8 border-[#1a120b] shadow-2xl flex p-1.5 overflow-hidden">
                             <div class="flex-1 flex bg-[#fdfaf5] rounded-xl overflow-hidden shadow-inner">
                                 ${z.cols.map((v, c) => renderCol(idx, c, v)).join('')}
                             </div>
@@ -287,25 +287,25 @@ function render() {
                     </div>
                 </div>
 
-                <!-- CORRECTION OPTIMISÉE (3 RÉPONSES VISIBLES SANS SCROLL) -->
-                <div class="card-back border-4 border-dashed border-slate-300 p-6 flex flex-col items-center">
-                    <div class="text-center w-full mb-4">
-                        <p class="text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] mb-2">Valeur sur le boulier</p>
-                        <h3 class="text-7xl font-space font-black tracking-tighter leading-none ${z.target > 0 ? (calculateValue(z.cols) === z.target ? 'text-emerald-500' : 'text-red-500') : 'text-indigo-600'}">
+                <!-- CORRECTION CALIBRÉE TBI (AFFICHAGE 3 BLOCS SANS SCROLL) -->
+                <div class="card-back border-4 border-dashed border-slate-300 p-5 flex flex-col items-center">
+                    <div class="text-center w-full mb-2">
+                        <p class="text-slate-400 font-black uppercase text-[9px] tracking-[0.3em] mb-1">Valeur sur le boulier</p>
+                        <h3 class="text-6xl font-space font-black tracking-tighter leading-none ${z.target > 0 ? (calculateValue(z.cols) === z.target ? 'text-emerald-500' : 'text-red-500') : 'text-indigo-600'}">
                             ${calculateValue(z.cols).toLocaleString()}
                         </h3>
                         ${z.target > 0 ? `
-                            <div class="mt-3 px-8 py-2 rounded-full font-black text-xl uppercase shadow-xl inline-block ${calculateValue(z.cols) === z.target ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">
+                            <div class="mt-2 px-6 py-1.5 rounded-full font-black text-lg uppercase shadow-lg inline-block ${calculateValue(z.cols) === z.target ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">
                                 ${calculateValue(z.cols) === z.target ? '✓ BRAVO' : '✗ ERREUR'}
                             </div>
                         ` : ''}
                     </div>
 
-                    <div class="flex-1 w-full space-y-3 overflow-y-auto pr-1 scrollbar-hide py-2">
+                    <div class="flex-1 w-full space-y-2 overflow-y-auto pr-1 scrollbar-hide py-2">
                         ${renderIdentityCard(z)}
                     </div>
 
-                    <button onclick="zones[${idx}].flipped=false; render();" class="mt-4 w-full h-16 bg-slate-900 text-white rounded-xl font-black text-lg uppercase shadow-2xl border-b-4 border-slate-950 active:scale-95 transition-transform">Retour</button>
+                    <button onclick="zones[${idx}].flipped=false; render();" class="mt-3 w-full h-14 bg-slate-900 text-white rounded-xl font-black text-base uppercase shadow-2xl border-b-4 border-slate-950 active:scale-95 transition-transform">Retour</button>
                 </div>
             </div>
         </div>
@@ -345,21 +345,21 @@ function renderIdentityCard(z) {
     const d = MathUtils.getDecomposition(val);
     let h = "";
     
-    const cardClass = "bg-white p-3 rounded-2xl border-2 border-slate-200 shadow-sm";
-    const titleClass = "text-slate-400 font-black text-[9px] uppercase mb-1 tracking-widest";
-    const valueClass = "font-black text-indigo-600 text-3xl font-space leading-tight block";
+    const cardClass = "bg-white p-2.5 rounded-xl border-2 border-slate-200 shadow-sm flex flex-col justify-center";
+    const titleClass = "text-slate-400 font-black text-[8px] uppercase mb-0.5 tracking-widest leading-none";
+    const valueClass = "font-black text-indigo-600 text-2xl font-space leading-tight block";
 
     if(z.opts.arabic) h += `<div class="${cardClass}"><p class="${titleClass}">Chiffres</p><span class="${valueClass}">${val.toLocaleString()}</span></div>`;
     if(z.opts.roman && val <= 3999) h += `<div class="${cardClass}"><p class="${titleClass}">Romains</p><span class="${valueClass} text-amber-600">${MathUtils.toRoman(val)}</span></div>`;
-    if(z.opts.letters) h += `<div class="${cardClass}"><p class="${titleClass}">Lettres</p><span class="font-bold text-slate-800 text-xl leading-tight block">"${MathUtils.toFrench(val)}"</span></div>`;
-    if(z.opts.add) h += `<div class="${cardClass}"><p class="${titleClass}">Addition</p><span class="font-black text-indigo-500 text-xl font-space leading-snug block">${d.adds}</span></div>`;
-    if(z.opts.mul) h += `<div class="${cardClass}"><p class="${titleClass}">Multiplication</p><span class="font-black text-emerald-600 text-xl font-space leading-snug block">${d.muls}</span></div>`;
+    if(z.opts.letters) h += `<div class="${cardClass}"><p class="${titleClass}">Lettres</p><span class="font-bold text-slate-800 text-lg leading-tight block">"${MathUtils.toFrench(val)}"</span></div>`;
+    if(z.opts.add) h += `<div class="${cardClass}"><p class="${titleClass}">Addition</p><span class="font-black text-indigo-500 text-lg font-space leading-snug block">${d.adds}</span></div>`;
+    if(z.opts.mul) h += `<div class="${cardClass}"><p class="${titleClass}">Multiplication</p><span class="font-black text-emerald-600 text-lg font-space leading-snug block">${d.muls}</span></div>`;
         
     return h;
 }
 
 // Initialisation au démarrage
-setNumPlayers(1);
+initZones(1);
 </script>
 </body>
 </html>

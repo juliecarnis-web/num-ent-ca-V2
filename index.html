@@ -237,7 +237,7 @@ function render() {
                             <div class="flex bg-slate-200 p-0.5 rounded-lg gap-0.5 shadow-inner">
                                 ${['random','manual','dictation'].map(m => `
                                     <button onclick="zones[${idx}].mode='${m}'; render();" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${z.mode === m ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}">
-                                        ${m === 'random' ? 'Entraînement' : m === 'manual' ? 'Duel' : 'Sprint'}
+                                        ${m === 'random' ? 'Entraînement' : m === 'manual' ? 'Défi' : 'Sprint'}
                                     </button>
                                 `).join('')}
                             </div>

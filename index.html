@@ -1,0 +1,398 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NUMÉRATION-ENTRAINEMENT | Expert Boulier</title>
+    
+    <!-- Frameworks & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --indigo-600: #4f46e5; --slate-900: #0f172a; }
+        body { font-family: 'Inter', sans-serif; background-color: #cbd5e1; min-height: 100vh; margin: 0; }
+        .font-space { font-family: 'Space Grotesk', sans-serif; }
+        
+        /* --- 3D FLIP CARD --- */
+        .card-container { perspective: 1200px; height: 100%; min-height: 600px; }
+        .card-inner {
+            position: relative; width: 100%; height: 100%;
+            transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .is-flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 2.5rem;
+            display: flex; flex-direction: column;
+        }
+        .card-back { transform: rotateY(180deg); }
+
+        /* --- ABACUS STYLES --- */
+        .bead { transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28); cursor: pointer; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        
+        /* Animations */
+        @keyframes pulse-timer {
+            0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; }
+        }
+        .timer-low { animation: pulse-timer 0.5s infinite; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+</head>
+<body class="overflow-x-hidden">
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- HEADER -->
+        <header class="bg-slate-900 text-white p-4 md:px-10 flex flex-col lg:flex-row items-center justify-between shadow-2xl z-50 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-indigo-800">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M3 3h18v18H3zM3 9h18M9 3v18"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-3xl font-black font-space tracking-tighter leading-none uppercase">NUMÉRATION-ENTRAINEMENT</h1>
+                    <p class="text-indigo-400 font-bold uppercase tracking-[0.3em] text-[9px] mt-1">Classe Adaptative v3.0</p>
+                </div>
+            </div>
+            
+            <div class="flex bg-slate-800 p-1 rounded-2xl border border-slate-700">
+                <button onclick="setMode(1)" id="btn-mode-1" class="px-6 py-2 rounded-xl text-sm font-black uppercase transition-all">Individuel</button>
+                <button onclick="setMode(2)" id="btn-mode-2" class="px-6 py-2 rounded-xl text-sm font-black uppercase transition-all">Duel</button>
+                <button onclick="setMode(4)" id="btn-mode-4" class="px-6 py-2 rounded-xl text-sm font-black uppercase transition-all">Équipe</button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main id="main-grid" class="flex-1 p-4 grid gap-6 md:gap-8 transition-all duration-500">
+            <!-- Injecté par JS -->
+        </main>
+
+        <footer class="py-6 text-center text-slate-500 font-black uppercase tracking-[0.4em] text-[10px] opacity-40">
+            Support Tableau Blanc Interactif - Algorithme de Numération Avancé
+        </footer>
+    </div>
+
+<script>
+/**
+ * 1. LOGIQUE MATHÉMATIQUE (UTILS)
+ */
+const MathUtils = {
+    toRoman(n) {
+        if (n <= 0 || n > 3999) return "N/A";
+        const map = { M:1000, CM:900, D:500, CD:400, C:100, XC:90, L:50, XL:40, X:10, IX:9, V:5, IV:4, I:1 };
+        let res = "";
+        for (let i in map) { while (n >= map[i]) { res += i; n -= map[i]; } }
+        return res;
+    },
+
+    toFrench(n) {
+        if (n === 0) return "zéro";
+        const units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"];
+        const teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
+        const tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante-dix", "quatre-vingt", "quatre-vingt-dix"];
+
+        const solve99 = (x) => {
+            if (x < 10) return units[x];
+            if (x < 20) return teens[x-10];
+            const q = Math.floor(x/10), r = x%10;
+            if (q === 7) return r === 1 ? "soixante-et-onze" : "soixante-" + teens[r];
+            if (q === 8) return r === 0 ? "quatre-vingts" : "quatre-vingt-" + units[r];
+            if (q === 9) return "quatre-vingt-" + teens[r];
+            if (r === 0) return tens[q];
+            if (r === 1 && q < 7) return tens[q] + "-et-un";
+            return tens[q] + "-" + units[r];
+        };
+
+        const solve999 = (x) => {
+            if (x < 100) return solve99(x);
+            const c = Math.floor(x/100), r = x%100;
+            const cPart = c === 1 ? "cent" : units[c] + "-cent" + (r === 0 ? "s" : "");
+            return r === 0 ? cPart : cPart + "-" + solve99(r);
+        };
+
+        const solve = (x) => {
+            if (x < 1000) return solve999(x);
+            if (x < 1000000) {
+                const m = Math.floor(x/1000), r = x%1000;
+                const mPart = m === 1 ? "mille" : solve999(m) + "-mille";
+                return r === 0 ? mPart : mPart + "-" + solve999(r);
+            }
+            const mio = Math.floor(x/1000000), r = x%1000000;
+            const mioPart = solve999(mio) + (mio > 1 ? "-millions" : "-million");
+            return r === 0 ? mioPart : mioPart + "-" + solve(r);
+        };
+
+        return solve(n).replace(/-+/g, "-").replace(/-$/, "");
+    },
+
+    getDecomposition(n) {
+        const s = n.toString();
+        const adds = [], muls = [];
+        for(let i=0; i<s.length; i++) {
+            const d = parseInt(s[i]);
+            if (d === 0) continue;
+            const p = s.length - 1 - i;
+            const val = d * Math.pow(10, p);
+            adds.push(val.toLocaleString());
+            muls.push(`(${d} x ${Math.pow(10, p).toLocaleString()})`);
+        }
+        return { adds: adds.join(" + "), muls: muls.join(" + ") };
+    }
+};
+
+/**
+ * 2. ÉTAT DE L'APPLICATION
+ */
+let players = 1;
+let zones = [];
+
+function initZones(count) {
+    zones = Array.from({ length: count }, (_, i) => ({
+        id: i,
+        cols: new Array(10).fill(0),
+        target: 0,
+        flipped: false,
+        range: 1000,
+        mode: 'manual', // manual, random, dictation
+        type: 'arabic',
+        timeLeft: 30,
+        timerActive: false,
+        opts: { arabic: true, roman: true, letters: true, add: true, mul: false }
+    }));
+    render();
+}
+
+/**
+ * 3. LOGIQUE BOULIER
+ */
+function handleBead(zoneIdx, colIdx, rowType, beadIdx) {
+    const z = zones[zoneIdx];
+    const val = z.cols[colIdx];
+    let up = Math.floor(val/5);
+    let low = val%5;
+
+    if (rowType === 'up') {
+        const clicked = beadIdx + 1;
+        up = clicked > up ? clicked : clicked - 1;
+    } else {
+        const clicked = beadIdx + 1;
+        low = clicked > low ? clicked : clicked - 1;
+    }
+    z.cols[colIdx] = (up * 5) + low;
+    render();
+}
+
+function calculateValue(cols) {
+    return cols.reduce((acc, v, i) => acc + (v * Math.pow(10, 9 - i)), 0);
+}
+
+/**
+ * 4. ACTIONS & MODES
+ */
+function generateChallenge(idx) {
+    const z = zones[idx];
+    const pool = [];
+    if(z.opts.arabic) pool.push('arabic');
+    if(z.opts.letters) pool.push('letters');
+    if(z.opts.roman) pool.push('roman');
+    if(z.opts.add) pool.push('add');
+    if(z.opts.mul) pool.push('mul');
+
+    z.type = pool[Math.floor(Math.random() * pool.length)] || 'arabic';
+    z.target = Math.floor(Math.random() * (z.range - 1)) + 1;
+    if(z.type === 'roman' && z.target > 3999) z.target = 3999;
+    
+    z.flipped = false;
+    z.timeLeft = 30;
+
+    if (z.mode === 'random') {
+        z.cols = z.target.toString().padStart(10, '0').split('').map(Number);
+    } else {
+        z.cols = new Array(10).fill(0);
+        if (z.mode === 'dictation') startTimer(idx);
+    }
+    render();
+}
+
+let intervals = {};
+function startTimer(idx) {
+    if(intervals[idx]) clearInterval(intervals[idx]);
+    zones[idx].timerActive = true;
+    intervals[idx] = setInterval(() => {
+        const z = zones[idx];
+        if(!z || z.timeLeft <= 0 || z.flipped) {
+            clearInterval(intervals[idx]);
+            if(z && z.timeLeft <= 0) { z.flipped = true; render(); }
+            return;
+        }
+        z.timeLeft -= 0.1;
+        const bar = document.getElementById(`timer-${idx}`);
+        if(bar) {
+            bar.style.width = (z.timeLeft / 30 * 100) + "%";
+            if(z.timeLeft < 5) bar.classList.add('timer-low');
+        }
+    }, 100);
+}
+
+function setMode(n) {
+    players = n;
+    ['1','2','4'].forEach(m => {
+        const btn = document.getElementById(`btn-mode-${m}`);
+        btn.className = (m == n) ? "px-6 py-2 rounded-xl text-sm font-black uppercase bg-indigo-600 text-white shadow-lg" : "px-6 py-2 rounded-xl text-sm font-black uppercase text-slate-400 hover:text-white";
+    });
+    initZones(n);
+}
+
+/**
+ * 5. RENDU (UI)
+ */
+function render() {
+    const grid = document.getElementById('main-grid');
+    grid.className = `flex-1 p-4 grid gap-6 ${players === 1 ? 'grid-cols-1 max-w-6xl mx-auto w-full' : players === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'}`;
+    
+    grid.innerHTML = zones.map((z, idx) => `
+        <div class="card-container ${z.flipped ? 'is-flipped' : ''}">
+            <div class="card-inner">
+                
+                <!-- FACE AVANT : BOULIER -->
+                <div class="card-front bg-white border-4 border-slate-300 shadow-2xl overflow-hidden">
+                    <!-- Config Header -->
+                    <div class="p-3 bg-slate-50 border-b-2 border-slate-200 flex flex-col gap-2">
+                        <div class="flex justify-between items-center">
+                            <div class="flex bg-slate-200 p-0.5 rounded-lg gap-0.5">
+                                ${['manual','random','dictation'].map(m => `
+                                    <button onclick="zones[${idx}].mode='${m}'; render();" class="px-2 py-1 rounded-md text-[9px] font-black uppercase ${z.mode === m ? 'bg-slate-900 text-white' : 'text-slate-500'}">
+                                        ${m === 'manual' ? 'Défi' : m === 'random' ? 'Lire' : 'Sprint'}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div class="flex gap-0.5">
+                                ${[1000, 10000, 1000000, 1000000000].map(r => `
+                                    <button onclick="zones[${idx}].range=${r}; render();" class="w-8 h-6 flex items-center justify-center rounded-md text-[8px] font-black border ${z.range === r ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white text-slate-400'}">
+                                        ${r < 10000 ? r : r === 10000 ? '10k' : (r/1000000)+'M'}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200">
+                            <div class="flex-1 flex gap-1 overflow-x-auto scrollbar-hide">
+                                ${Object.entries(z.opts).map(([k,v]) => `
+                                    <button onclick="zones[${idx}].opts.${k}=${!v}; render();" class="px-2 py-1 rounded-full text-[8px] font-black uppercase border whitespace-nowrap ${v ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : 'bg-slate-50 text-slate-300'}">${k}</button>
+                                `).join('')}
+                            </div>
+                            <button onclick="generateChallenge(${idx})" class="h-8 px-4 bg-indigo-600 text-white rounded-lg font-black text-[10px] uppercase shadow-md active:translate-y-0.5 border-b-2 border-indigo-800">Lancer</button>
+                        </div>
+                    </div>
+
+                    <!-- Écran Défi -->
+                    <div class="p-4">
+                        <div class="bg-slate-900 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[90px] relative overflow-hidden shadow-inner border-b-4 border-slate-800">
+                            ${z.mode === 'dictation' && z.target > 0 ? `<div id="timer-${idx}" class="absolute top-0 left-0 h-1.5 bg-emerald-500" style="width:${z.timeLeft/30*100}%"></div>` : ''}
+                            <span class="text-indigo-400 text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Zone #${idx+1}</span>
+                            <h2 class="text-white text-center font-space font-bold ${players === 4 ? 'text-lg' : 'text-3xl'} break-words w-full">
+                                ${z.target === 0 ? 'PRÊT ?' : getChallengeLabel(z)}
+                            </h2>
+                        </div>
+                    </div>
+
+                    <!-- Boulier -->
+                    <div class="flex-1 px-4 flex items-center justify-center">
+                        <div class="w-full h-full max-h-[380px] bg-[#2d1e12] rounded-3xl border-8 border-[#1a120b] shadow-2xl relative flex p-1 overflow-hidden">
+                            <div class="flex-1 flex bg-[#fdfaf5] rounded-lg overflow-hidden shadow-inner">
+                                ${z.cols.map((v, c) => renderCol(idx, c, v)).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls Bas -->
+                    <div class="p-4 bg-slate-50 border-t-2 border-slate-200 flex gap-2">
+                        <button onclick="zones[${idx}].flipped=true; render();" class="flex-[3] h-14 bg-emerald-600 border-b-4 border-emerald-800 text-white rounded-xl font-black text-xs uppercase shadow-lg active:translate-y-1 active:border-b-0">Corriger</button>
+                        <button onclick="zones[${idx}].cols=new Array(10).fill(0); render();" class="flex-1 h-14 bg-white text-red-500 border border-red-100 rounded-xl font-black text-[10px] uppercase shadow-sm">Vider</button>
+                    </div>
+                </div>
+
+                <!-- FACE ARRIÈRE : CORRECTION -->
+                <div class="card-back bg-slate-100 border-4 border-dashed border-slate-400 p-6">
+                    <div class="text-center mb-6">
+                        <p class="text-slate-400 font-black uppercase text-[10px] tracking-widest mb-1">Valeur sur le boulier</p>
+                        <h3 class="text-6xl font-space font-black ${z.target > 0 ? (calculateValue(z.cols) === z.target ? 'text-emerald-500' : 'text-red-500') : 'text-indigo-600'}">
+                            ${calculateValue(z.cols).toLocaleString()}
+                        </h3>
+                        ${z.target > 0 ? `
+                            <div class="mt-2 px-6 py-2 rounded-full font-black text-xl uppercase ${calculateValue(z.cols) === z.target ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">
+                                ${calculateValue(z.cols) === z.target ? '✓ BRAVO' : '✗ ERREUR'}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="flex-1 space-y-3 overflow-y-auto pr-2 scrollbar-hide">
+                        ${renderIdentityCard(z)}
+                    </div>
+
+                    <button onclick="zones[${idx}].flipped=false; render();" class="mt-6 w-full h-14 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform">Retour</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderCol(zIdx, cIdx, val) {
+    const up = Math.floor(val/5), low = val%5;
+    const hasDot = [0,3,6,9].includes(cIdx);
+    return `
+        <div class="flex-1 flex flex-col items-center relative border-x border-slate-200/20">
+            <div class="absolute w-1 md:w-2 h-full bg-gradient-to-r from-slate-400 via-slate-100 to-slate-400 left-1/2 -translate-x-1/2 z-0"></div>
+            
+            <div class="relative w-full h-[30%] flex flex-col justify-end z-10 px-0.5 pb-2">
+                ${[1,0].map(i => `<div onclick="handleBead(${zIdx},${cIdx},'up',${i})" class="bead w-full aspect-[2.4/1] rounded-full shadow-md border border-black/30 ${up > i ? 'bg-red-600' : 'bg-red-950 opacity-80'}" style="transform: translateY(${up > i ? i*2 : -18}px)"></div>`).join('')}
+            </div>
+
+            <div class="w-full h-4 bg-[#1a120b] z-30 shadow-lg flex items-center justify-center border-y border-black/50">
+                ${hasDot ? `<div class="w-1.5 h-1.5 bg-white/90 rounded-full shadow-[0_0_5px_white]"></div>` : ''}
+            </div>
+
+            <div class="relative w-full h-[70%] flex flex-col justify-start z-10 px-0.5 pt-2">
+                ${[0,1,2,3].map(i => `<div onclick="handleBead(${zIdx},${cIdx},'low',${i})" class="bead w-full aspect-[2.4/1] rounded-full shadow-md border border-black/30 ${low > i ? 'bg-blue-600' : 'bg-blue-950 opacity-80'}" style="transform: translateY(${low > i ? -i*2 : 24}px)"></div>`).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function getChallengeLabel(z) {
+    if(z.mode === 'random') return z.target.toLocaleString();
+    const deco = MathUtils.getDecomposition(z.target);
+    switch(z.type) {
+        case 'roman': return MathUtils.toRoman(z.target);
+        case 'letters': return MathUtils.toFrench(z.target);
+        case 'add': return deco.adds;
+        case 'mul': return deco.muls;
+        default: return z.target.toLocaleString();
+    }
+}
+
+function renderIdentityCard(z) {
+    const val = z.target > 0 ? z.target : calculateValue(z.cols);
+    const deco = MathUtils.getDecomposition(val);
+    let html = "";
+    if(z.opts.arabic) html += `<div class="bg-white p-4 rounded-2xl border shadow-sm">Arabes: <span class="font-black text-indigo-600 text-xl">${val.toLocaleString()}</span></div>`;
+    if(z.opts.roman && val <= 3999) html += `<div class="bg-white p-4 rounded-2xl border shadow-sm">Romain: <span class="font-bold text-amber-600 text-xl">${MathUtils.toRoman(val)}</span></div>`;
+    if(z.opts.letters) html += `<div class="bg-white p-4 rounded-2xl border shadow-sm text-sm italic leading-tight">"${MathUtils.toFrench(val)}"</div>`;
+    if(z.opts.add) html += `<div class="bg-white p-4 rounded-2xl border shadow-sm text-xs"><p class="text-[8px] font-black opacity-30 mb-1">DÉCOMPOSITION (+)</p>${deco.adds}</div>`;
+    if(z.opts.mul) html += `<div class="bg-white p-4 rounded-2xl border shadow-sm text-xs"><p class="text-[8px] font-black opacity-30 mb-1">DÉCOMPOSITION (x)</p>${deco.muls}</div>`;
+    return html;
+}
+
+// Lancement initial
+setMode(1);
+</script>
+</body>
+</html>

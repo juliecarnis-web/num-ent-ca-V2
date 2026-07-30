@@ -74,10 +74,11 @@
 /** 1. LOGIQUE MATHÉMATIQUE **/
 const MathUtils = {
     toRoman(n) {
-        if (n <= 0 || n > 3999) return "N/A";
+        let intN = Math.floor(n);
+        if (intN <= 0 || intN > 3999) return "N/A";
         const map = { M:1000, CM:900, D:500, CD:400, C:100, XC:90, L:50, XL:40, X:10, IX:9, V:5, IV:4, I:1 };
         let res = "";
-        for (let i in map) { while (n >= map[i]) { res += i; n -= map[i]; } }
+        for (let i in map) { while (intN >= map[i]) { res += i; intN -= map[i]; } }
         return res;
     },
     toFrench(n) {
@@ -85,6 +86,7 @@ const MathUtils = {
         const units = ["", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"];
         const teens = ["dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
         const tens = ["", "dix", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante-dix", "quatre-vingt", "quatre-vingt-dix"];
+        
         const solve99 = (x) => {
             if (x < 10) return units[x];
             if (x < 20) return teens[x-10];
@@ -102,7 +104,8 @@ const MathUtils = {
             const cPart = c === 1 ? "cent" : units[c] + "-cent" + (r === 0 ? "s" : "");
             return r === 0 ? cPart : cPart + "-" + solve99(r);
         };
-        const solve = (x) => {
+        const solveInt = (x) => {
+            if (x === 0) return "zéro";
             if (x < 1000) return solve999(x);
             if (x < 1000000) {
                 const m = Math.floor(x/1000), r = x%1000;
@@ -111,22 +114,45 @@ const MathUtils = {
             }
             const mio = Math.floor(x/1000000), r = x%1000000;
             const mioPart = solve999(mio) + (mio > 1 ? "-millions" : "-million");
-            return r === 0 ? mioPart : mioPart + "-" + solve(r);
+            return r === 0 ? mioPart : mioPart + "-" + solveInt(r);
         };
-        return solve(n).replace(/-+/g, "-").replace(/-$/, "");
+
+        const parts = n.toString().split('.');
+        let intVal = parseInt(parts[0], 10) || 0;
+        let str = solveInt(intVal).replace(/-+/g, "-").replace(/-$/, "");
+
+        if (parts.length > 1 && parseInt(parts[1], 10) > 0) {
+            let decDigits = parts[1].split('').map(d => units[parseInt(d, 10)] || 'zéro').join('-');
+            str += " virgule " + decDigits;
+        }
+        return str;
     },
     getDecomposition(n) {
-        const s = n.toString();
+        const parts = n.toString().split('.');
+        const sInt = parts[0];
+        const sDec = parts[1] || "";
         const adds = [], muls = [];
-        for(let i=0; i<s.length; i++) {
-            const d = parseInt(s[i]);
+        
+        // Partie entière
+        for(let i=0; i<sInt.length; i++) {
+            const d = parseInt(sInt[i]);
             if (d === 0) continue;
-            const p = s.length - 1 - i;
-            const val = d * Math.pow(10, p);
-            adds.push(val.toLocaleString());
-            muls.push(`(${d} x ${Math.pow(10, p).toLocaleString()})`);
+            const p = sInt.length - 1 - i;
+            const mult = Math.pow(10, p);
+            const val = d * mult;
+            adds.push(val.toLocaleString('fr-FR'));
+            muls.push(`(${d} x ${mult.toLocaleString('fr-FR')})`);
         }
-        return { adds: adds.join(" + "), muls: muls.join(" + ") };
+        // Partie décimale
+        for(let i=0; i<sDec.length; i++) {
+            const d = parseInt(sDec[i]);
+            if (d === 0) continue;
+            const div = Math.pow(10, -(i + 1));
+            const val = d * div;
+            adds.push(val.toLocaleString('fr-FR'));
+            muls.push(`(${d} x ${div})`);
+        }
+        return { adds: adds.join(" + ") || "0", muls: muls.join(" + ") || "0" };
     }
 };
 
@@ -142,10 +168,12 @@ function initZones(count) {
         target: 0,
         flipped: false,
         range: 1000,
-        mode: 'random', // "Entraînement"
+        mode: 'random', // Mode de départ : "Entraînement"
         type: 'arabic',
         timeLeft: 30,
-        opts: { arabic: true, roman: true, letters: true, add: true, mul: false }
+        decimals: false,
+        commaPos: 3, // Nombre de rangs décimaux (3 par défaut)
+        opts: { arabic: true, roman: true, letters: true, add: true, mul: true } // TOUTES ACTIVÉES PAR DÉFAUT
     }));
     render();
 }
@@ -167,8 +195,37 @@ function handleBead(zIdx, colIdx, rowType, beadIdx) {
     render();
 }
 
-function calculateValue(cols) {
-    return cols.reduce((acc, v, i) => acc + (v * Math.pow(10, 9 - i)), 0);
+function calculateValue(cols, commaPos = 0, decimals = false) {
+    const decPos = decimals ? commaPos : 0;
+    let total = 0;
+    for (let i = 0; i < cols.length; i++) {
+        const power = (9 - i) - decPos;
+        total += cols[i] * Math.pow(10, power);
+    }
+    return parseFloat(total.toFixed(decPos));
+}
+
+function valueToCols(target, commaPos, decimals) {
+    const decPos = decimals ? commaPos : 0;
+    const cols = new Array(10).fill(0);
+    const parts = target.toString().split('.');
+    const intStr = parts[0];
+    const decStr = parts[1] || '';
+
+    const intSplitCol = 9 - decPos;
+    for (let i = 0; i < intStr.length; i++) {
+        const colIdx = intSplitCol - (intStr.length - 1 - i);
+        if (colIdx >= 0 && colIdx < 10) {
+            cols[colIdx] = parseInt(intStr[i], 10);
+        }
+    }
+    for (let i = 0; i < decStr.length; i++) {
+        const colIdx = intSplitCol + 1 + i;
+        if (colIdx >= 0 && colIdx < 10) {
+            cols[colIdx] = parseInt(decStr[i], 10);
+        }
+    }
+    return cols;
 }
 
 /** 4. ACTIONS **/
@@ -177,19 +234,26 @@ function generateChallenge(idx) {
     const pool = [];
     if(z.opts.arabic) pool.push('arabic');
     if(z.opts.letters) pool.push('letters');
-    if(z.opts.roman) pool.push('roman');
+    if(z.opts.roman && !z.decimals) pool.push('roman');
     if(z.opts.add) pool.push('add');
     if(z.opts.mul) pool.push('mul');
 
     z.type = pool[Math.floor(Math.random() * pool.length)] || 'arabic';
-    z.target = Math.floor(Math.random() * (z.range - 1)) + 1;
-    if(z.type === 'roman' && z.target > 3999) z.target = 3999;
-    
+
+    if (z.decimals) {
+        const maxVal = z.range;
+        z.target = parseFloat((Math.random() * maxVal).toFixed(z.commaPos));
+    } else {
+        z.target = Math.floor(Math.random() * (z.range - 1)) + 1;
+        if(z.type === 'roman' && z.target > 3999) z.target = 3999;
+    }
+
     z.flipped = false;
     z.timeLeft = 30;
 
-    if (z.mode === 'random') {
-        z.cols = z.target.toString().padStart(10, '0').split('').map(Number);
+    // En mode "random" ET en mode "empty" (Vide), le boulier se remplit avec le nombre tiré
+    if (z.mode === 'random' || z.mode === 'empty') {
+        z.cols = valueToCols(z.target, z.commaPos, z.decimals);
     } else {
         z.cols = new Array(10).fill(0);
         if (z.mode === 'dictation') startTimer(idx);
@@ -226,18 +290,20 @@ function setNumPlayers(n) {
 function render() {
     const grid = document.getElementById('main-grid');
     grid.className = `flex-1 p-4 grid gap-6 ${players === 1 ? 'grid-cols-1 max-w-5xl mx-auto w-full' : players === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'}`;
-    
-    grid.innerHTML = zones.map((z, idx) => `
+
+    grid.innerHTML = zones.map((z, idx) => {
+        const currentVal = calculateValue(z.cols, z.commaPos, z.decimals);
+        return `
         <div class="card-container ${z.flipped ? 'is-flipped' : ''}">
             <div class="card-inner">
                 <div class="card-front bg-white border-4 border-slate-300">
-                    <!-- Config (ORDRE EXACT : Entraînement, Duel, Sprint) -->
+                    <!-- Config (ORDRE : Vide, Entraînement, Duel, Sprint) -->
                     <div class="p-3 bg-slate-50 border-b flex flex-col gap-2">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center flex-wrap gap-2">
                             <div class="flex bg-slate-200 p-0.5 rounded-lg gap-0.5 shadow-inner">
-                                ${['random','manual','dictation'].map(m => `
+                                ${['empty','random','manual','dictation'].map(m => `
                                     <button onclick="zones[${idx}].mode='${m}'; render();" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${z.mode === m ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}">
-                                        ${m === 'random' ? 'Entraînement' : m === 'manual' ? 'Défi' : 'Sprint'}
+                                        ${m === 'empty' ? 'Vide' : m === 'random' ? 'Entraînement' : m === 'manual' ? 'Duel' : 'Sprint'}
                                     </button>
                                 `).join('')}
                             </div>
@@ -249,7 +315,24 @@ function render() {
                                 `).join('')}
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 bg-white p-1 rounded-lg border-2 border-slate-100">
+
+                        <!-- BARRE DE CONTRÔLES DÉCIMAUX ET OPTION TYPES -->
+                        <div class="flex flex-wrap items-center gap-2 bg-white p-1 rounded-lg border-2 border-slate-100">
+                            <!-- Toggle Décimaux -->
+                            <div class="flex items-center gap-1 border-r border-slate-200 pr-2">
+                                <button onclick="zones[${idx}].decimals = !zones[${idx}].decimals; generateChallenge(${idx});" class="px-2.5 py-1 rounded-md text-[9px] font-black uppercase border transition-all ${z.decimals ? 'bg-red-500 text-white border-red-600 shadow-sm' : 'bg-slate-100 text-slate-500 hover:text-slate-800'}">
+                                    Décimaux
+                                </button>
+                                ${z.decimals ? `
+                                    <div class="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded border border-slate-200">
+                                        <span class="text-[8px] font-black text-slate-500 px-1">Virgule:</span>
+                                        <button onclick="if(zones[${idx}].commaPos > 1){ zones[${idx}].commaPos--; render(); }" class="w-5 h-5 flex items-center justify-center bg-white rounded text-[10px] font-black text-red-600 shadow-sm hover:bg-slate-50">-</button>
+                                        <span class="text-[9px] font-black text-red-600 px-1 font-mono">${z.commaPos}</span>
+                                        <button onclick="if(zones[${idx}].commaPos < 5){ zones[${idx}].commaPos++; render(); }" class="w-5 h-5 flex items-center justify-center bg-white rounded text-[10px] font-black text-red-600 shadow-sm hover:bg-slate-50">+</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+
                             <div class="flex-1 flex gap-1 overflow-x-auto scrollbar-hide px-1">
                                 ${Object.entries(z.opts).map(([k,v]) => `
                                     <button onclick="zones[${idx}].opts.${k}=${!v}; render();" class="px-2 py-1 rounded-full text-[8px] font-black uppercase border transition-all ${v ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-300'}">
@@ -261,12 +344,12 @@ function render() {
                         </div>
                     </div>
 
-                    <!-- Défi -->
+                    <!-- Défi / Cartouche Supérieur -->
                     <div class="p-3">
                         <div class="bg-slate-900 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[90px] relative overflow-hidden shadow-inner">
                             ${z.mode === 'dictation' && z.target > 0 ? `<div id="timer-${idx}" class="absolute top-0 left-0 h-1.5 bg-emerald-500" style="width:${z.timeLeft/30*100}%"></div>` : ''}
                             <h2 class="text-white text-center font-space font-bold ${players === 4 ? 'text-lg' : 'text-3xl'} break-words w-full tracking-tight">
-                                ${z.target === 0 ? 'PRÊT ?' : getChallengeLabel(z)}
+                                ${getChallengeLabel(z)}
                             </h2>
                         </div>
                     </div>
@@ -275,7 +358,7 @@ function render() {
                     <div class="flex-1 px-4 flex items-center justify-center">
                         <div class="w-full h-full max-h-[350px] bg-[#2d1e12] rounded-[2rem] border-8 border-[#1a120b] shadow-2xl flex p-1.5 overflow-hidden">
                             <div class="flex-1 flex bg-[#fdfaf5] rounded-xl overflow-hidden shadow-inner">
-                                ${z.cols.map((v, c) => renderCol(idx, c, v)).join('')}
+                                ${z.cols.map((v, c) => renderCol(idx, c, v, z)).join('')}
                             </div>
                         </div>
                     </div>
@@ -291,14 +374,18 @@ function render() {
                 <div class="card-back border-4 border-dashed border-slate-300 p-5 flex flex-col items-center">
                     <div class="text-center w-full mb-2">
                         <p class="text-slate-400 font-black uppercase text-[9px] tracking-[0.3em] mb-1">Valeur sur le boulier</p>
-                        <h3 class="text-6xl font-space font-black tracking-tighter leading-none ${z.target > 0 ? (calculateValue(z.cols) === z.target ? 'text-emerald-500' : 'text-red-500') : 'text-indigo-600'}">
-                            ${calculateValue(z.cols).toLocaleString()}
+                        <h3 class="text-6xl font-space font-black tracking-tighter leading-none ${z.mode === 'empty' ? 'text-indigo-600' : (z.target > 0 ? (currentVal === z.target ? 'text-emerald-500' : 'text-red-500') : 'text-indigo-600')}">
+                            ${currentVal.toLocaleString('fr-FR')}
                         </h3>
-                        ${z.target > 0 ? `
-                            <div class="mt-2 px-6 py-1.5 rounded-full font-black text-lg uppercase shadow-lg inline-block ${calculateValue(z.cols) === z.target ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">
-                                ${calculateValue(z.cols) === z.target ? '✓ BRAVO' : '✗ ERREUR'}
+                        ${z.mode === 'empty' ? `
+                            <div class="mt-2 px-6 py-1.5 rounded-full font-black text-xs uppercase shadow-md inline-block bg-indigo-600 text-white tracking-widest">
+                                FICHE IDENTITÉ DU BOULIER
                             </div>
-                        ` : ''}
+                        ` : (z.target > 0 ? `
+                            <div class="mt-2 px-6 py-1.5 rounded-full font-black text-lg uppercase shadow-lg inline-block ${currentVal === z.target ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}">
+                                ${currentVal === z.target ? '✓ BRAVO' : '✗ ERREUR'}
+                            </div>
+                        ` : '')}
                     </div>
 
                     <div class="flex-1 w-full space-y-2 overflow-y-auto pr-1 scrollbar-hide py-2">
@@ -309,39 +396,55 @@ function render() {
                 </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
-function renderCol(zIdx, cIdx, val) {
+function renderCol(zIdx, cIdx, val, z) {
     const up = Math.floor(val/5), low = val%5, hasDot = [0,3,6,9].includes(cIdx);
+    const isCommaSplit = z.decimals && z.commaPos > 0 && cIdx === (9 - z.commaPos);
+
     return `
         <div class="flex-1 flex flex-col items-center relative border-x border-slate-200/10">
             <div class="absolute w-1 h-full bg-gradient-to-r from-slate-400 via-slate-100 to-slate-400 left-1/2 -translate-x-1/2"></div>
+            
+            <!-- PARTIE SUPÉRIEURE (2 perles rouges, valeur 5) -->
             <div class="relative w-full h-[30%] flex flex-col justify-end z-10 px-0.5 pb-1">
                 ${[1,0].map(i => `<div onclick="handleBead(${zIdx},${cIdx},'up',${i})" class="bead w-full aspect-[2.4/1] rounded-full shadow-md border border-black/30 ${up > i ? 'bg-red-600' : 'bg-red-950 opacity-80'}" style="transform: translateY(${up > i ? i*2 : -18}px)"></div>`).join('')}
             </div>
-            <div class="w-full h-3 bg-[#1a120b] z-30 flex items-center justify-center shadow-inner">${hasDot ? `<div class="w-1.5 h-1.5 bg-white/90 rounded-full shadow-[0_0_5px_white]"></div>` : ''}</div>
+
+            <!-- BARRE CENTRALE NOIRE + VIRGULE MOBILE -->
+            <div class="w-full h-3 bg-[#1a120b] z-30 flex items-center justify-center shadow-inner relative">
+                ${hasDot ? `<div class="w-1.5 h-1.5 bg-white/90 rounded-full shadow-[0_0_5px_white]"></div>` : ''}
+                ${isCommaSplit ? `<div class="absolute -right-2 top-1/2 -translate-y-1/2 z-40 text-red-500 font-black text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] pointer-events-none font-mono">,</div>` : ''}
+            </div>
+
+            <!-- PARTIE INFÉRIEURE (5 PERLES BLEUES, valeur 1) -->
             <div class="relative w-full h-[70%] flex flex-col justify-start z-10 px-0.5 pt-1">
-                ${[0,1,2,3].map(i => `<div onclick="handleBead(${zIdx},${cIdx},'low',${i})" class="bead w-full aspect-[2.4/1] rounded-full shadow-md border border-black/30 ${low > i ? 'bg-blue-600' : 'bg-blue-950 opacity-80'}" style="transform: translateY(${low > i ? -i*2 : 30}px)"></div>`).join('')}
+                ${[0,1,2,3,4].map(i => `<div onclick="handleBead(${zIdx},${cIdx},'low',${i})" class="bead w-full aspect-[2.4/1] rounded-full shadow-md border border-black/30 ${low > i ? 'bg-blue-600' : 'bg-blue-950 opacity-80'}" style="transform: translateY(${low > i ? -i*2 : 24}px)"></div>`).join('')}
             </div>
         </div>
     `;
 }
 
 function getChallengeLabel(z) {
-    if(z.mode === 'random') return z.target.toLocaleString();
+    if (z.mode === 'empty') return '❓ Quel est ce nombre ?';
+    if (z.target === 0) return 'PRÊT ?';
+    if (z.mode === 'random') return z.target.toLocaleString('fr-FR');
+    
     const d = MathUtils.getDecomposition(z.target);
     switch(z.type) {
         case 'roman': return MathUtils.toRoman(z.target);
         case 'letters': return MathUtils.toFrench(z.target);
         case 'add': return d.adds;
         case 'mul': return d.muls;
-        default: return z.target.toLocaleString();
+        default: return z.target.toLocaleString('fr-FR');
     }
 }
 
 function renderIdentityCard(z) {
-    const val = z.target > 0 ? z.target : calculateValue(z.cols);
+    const currentVal = calculateValue(z.cols, z.commaPos, z.decimals);
+    // En mode "Vide" ou si le boulier est libre (target === 0), la fiche lit la valeur posée sur le boulier
+    const val = (z.mode === 'empty' || z.target === 0) ? currentVal : z.target;
     const d = MathUtils.getDecomposition(val);
     let h = "";
     
@@ -349,8 +452,8 @@ function renderIdentityCard(z) {
     const titleClass = "text-slate-400 font-black text-[8px] uppercase mb-0.5 tracking-widest leading-none";
     const valueClass = "font-black text-indigo-600 text-2xl font-space leading-tight block";
 
-    if(z.opts.arabic) h += `<div class="${cardClass}"><p class="${titleClass}">Chiffres</p><span class="${valueClass}">${val.toLocaleString()}</span></div>`;
-    if(z.opts.roman && val <= 3999) h += `<div class="${cardClass}"><p class="${titleClass}">Romains</p><span class="${valueClass} text-amber-600">${MathUtils.toRoman(val)}</span></div>`;
+    if(z.opts.arabic) h += `<div class="${cardClass}"><p class="${titleClass}">Chiffres</p><span class="${valueClass}">${val.toLocaleString('fr-FR')}</span></div>`;
+    if(z.opts.roman && !z.decimals && val <= 3999) h += `<div class="${cardClass}"><p class="${titleClass}">Romains</p><span class="${valueClass} text-amber-600">${MathUtils.toRoman(val)}</span></div>`;
     if(z.opts.letters) h += `<div class="${cardClass}"><p class="${titleClass}">Lettres</p><span class="font-bold text-slate-800 text-lg leading-tight block">"${MathUtils.toFrench(val)}"</span></div>`;
     if(z.opts.add) h += `<div class="${cardClass}"><p class="${titleClass}">Addition</p><span class="font-black text-indigo-500 text-lg font-space leading-snug block">${d.adds}</span></div>`;
     if(z.opts.mul) h += `<div class="${cardClass}"><p class="${titleClass}">Multiplication</p><span class="font-black text-emerald-600 text-lg font-space leading-snug block">${d.muls}</span></div>`;
